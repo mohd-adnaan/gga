@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import Combine
 
 class AppSettings: ObservableObject {
     @Published var vibrationIntensity: Double {
@@ -71,6 +72,34 @@ enum LeadTime: Int, CaseIterable {
             return 10 // meters, assuming ~1m/s walking speed
         case .twentySeconds:
             return 20
+        }
+    }
+}
+
+enum TransportMode: String, CaseIterable {
+    case walking = "walking"
+    case cycling = "cycling"
+    case driving = "driving"
+    
+    var displayName: String {
+        switch self {
+        case .walking:
+            return "Walking"
+        case .cycling:
+            return "Cycling"
+        case .driving:
+            return "Driving"
+        }
+    }
+    
+    var systemImage: String {
+        switch self {
+        case .walking:
+            return "figure.walk"
+        case .cycling:
+            return "bicycle"
+        case .driving:
+            return "car"
         }
     }
 }

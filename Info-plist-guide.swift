@@ -2,18 +2,18 @@
 //  Info.plist Configuration Guide
 //  GloveGuide
 //
-//  You'll need to add these keys to your Info.plist file:
+//  IMPORTANT: You MUST add these keys to your Info.plist file for location permissions to work!
 //
 
 /*
-Required permissions for your Info.plist:
+CRITICAL: Required permissions for your Info.plist - ADD THESE OR LOCATION WON'T WORK:
 
-1. Location Services:
+1. Location Services (REQUIRED FOR LOCATION ACCESS):
 <key>NSLocationWhenInUseUsageDescription</key>
-<string>GloveGuide needs location access to provide turn-by-turn haptic navigation.</string>
+<string>GloveGuide needs location access to provide turn-by-turn haptic navigation and show your current position on the map.</string>
 
 <key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
-<string>GloveGuide needs location access to continue navigation in the background.</string>
+<string>GloveGuide needs location access to continue navigation in the background and provide accurate positioning.</string>
 
 2. Bluetooth:
 <key>NSBluetoothAlwaysUsageDescription</key>

@@ -8,12 +8,13 @@
 import Foundation
 import MapKit
 import SwiftUI
+import Combine
 
 @MainActor
 class AppCoordinator: ObservableObject {
     // MARK: - Managers
     let bluetoothManager = BluetoothManager()
-    let settings = AppSettings()
+    @Published var settings = AppSettings()
     private(set) lazy var navigationManager = NavigationManager(bluetoothManager: bluetoothManager, settings: settings)
     
     // MARK: - UI State
@@ -73,5 +74,3 @@ enum AppScreen {
     case navigation
     case settings
 }
-
-import Combine

@@ -13,10 +13,6 @@ struct SettingsView: View {
     @Environment(\.presentationMode) var presentationMode
     @State private var showingDeviceList = false
     
-    private var settings: AppSettings {
-        coordinator.settings
-    }
-    
     private var bluetoothManager: BluetoothManager {
         coordinator.bluetoothManager
     }
@@ -31,29 +27,29 @@ struct SettingsView: View {
                         HStack {
                             Text("Vibration Intensity")
                             Spacer()
-                            Text("\(Int(settings.vibrationIntensity))%")
+                            Text("\(Int(coordinator.settings.vibrationIntensity))%")
                                 .foregroundColor(.secondary)
                         }
                         
-                        Slider(value: $settings.vibrationIntensity, in: 0...100, step: 5)
+                        Slider(value: $coordinator.settings.vibrationIntensity, in: 0...100, step: 5)
                             .accentColor(.blue)
                     }
                     
                     // Lead Time
-                    Picker("Lead Time Before Turn", selection: $settings.leadTime) {
+                    Picker("Lead Time Before Turn", selection: $coordinator.settings.leadTime) {
                         ForEach(LeadTime.allCases, id: \.self) { leadTime in
                             Text(leadTime.displayName).tag(leadTime)
                         }
                     }
                     
                     // Progressive Intensity
-                    Toggle("Progressive Intensity", isOn: $settings.progressiveIntensityEnabled)
+                    Toggle("Progressive Intensity", isOn: $coordinator.settings.progressiveIntensityEnabled)
                 }
                 
                 // Bluetooth Connection Section
                 Section("Bluetooth Connection") {
                     HStack {
-                        Image(systemName: bluetoothManager.isConnected ? "bluetooth" : "bluetooth.slash")
+                        Image(systemName: bluetoothManager.isConnected ? "bluetooth" : "bluetooth.disabled")
                             .foregroundColor(bluetoothManager.isConnected ? .blue : .gray)
                         
                         VStack(alignment: .leading) {
@@ -91,7 +87,7 @@ struct SettingsView: View {
                 
                 // Navigation Preferences Section
                 Section("Navigation Preferences") {
-                    Picker("Default Transport Mode", selection: $settings.transportMode) {
+                    Picker("Default Transport Mode", selection: $coordinator.settings.transportMode) {
                         ForEach(TransportMode.allCases, id: \.self) { mode in
                             HStack {
                                 Image(systemName: mode.systemImage)
@@ -121,19 +117,21 @@ struct SettingsView: View {
             }
             .navigationTitle("Settings")
             .navigationBarTitleDisplayMode(.inline)
-            .navigationBarItems(
-                trailing: Button("Done") {
-                    // Sync settings to connected device
-                    if bluetoothManager.isConnected {
-                        bluetoothManager.syncSettings(
-                            intensity: settings.vibrationIntensity,
-                            leadTime: settings.leadTime,
-                            progressiveEnabled: settings.progressiveIntensityEnabled
-                        )
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Done") {
+                        // Sync settings to connected device
+                        if bluetoothManager.isConnected {
+                            bluetoothManager.syncSettings(
+                                intensity: coordinator.settings.vibrationIntensity,
+                                leadTime: coordinator.settings.leadTime,
+                                progressiveEnabled: coordinator.settings.progressiveIntensityEnabled
+                            )
+                        }
+                        presentationMode.wrappedValue.dismiss()
                     }
-                    presentationMode.wrappedValue.dismiss()
                 }
-            )
+            }
         }
         .sheet(isPresented: $showingDeviceList) {
             DeviceListView(bluetoothManager: bluetoothManager)
@@ -150,71 +148,83 @@ struct DeviceListView: View {
         NavigationView {
             VStack {
                 if bluetoothManager.discoveredDevices.isEmpty && !isScanning {
-                    VStack(spacing: 20) {
-                        Image(systemName: "bluetooth")
-                            .font(.system(size: 60))
-                            .foregroundColor(.gray)
-                        
-                        Text("No devices found")
-                            .font(.headline)
-                            .foregroundColor(.gray)
-                        
-                        Text("Make sure your glove device is in pairing mode and try scanning again.")
-                            .font(.body)
-                            .foregroundColor(.secondary)
-                            .multilineTextAlignment(.center)
-                            .padding(.horizontal)
-                        
-                        Button("Start Scanning") {
-                            startScanning()
-                        }
-                        .buttonStyle(.borderedProminent)
-                    }
+                    emptyStateView
                 } else {
-                    List {
-                        if isScanning {
-                            HStack {
-                                ProgressView()
-                                    .scaleEffect(0.8)
-                                Text("Scanning for devices...")
-                                    .foregroundColor(.secondary)
-                            }
-                            .padding(.vertical, 8)
-                        }
-                        
-                        ForEach(bluetoothManager.discoveredDevices, id: \.identifier) { device in
-                            DeviceRow(device: device) {
-                                bluetoothManager.connect(to: device)
-                                presentationMode.wrappedValue.dismiss()
-                            }
-                        }
-                    }
-                    .refreshable {
-                        startScanning()
-                    }
+                    deviceListContent
                 }
             }
             .navigationTitle("Available Devices")
             .navigationBarTitleDisplayMode(.inline)
-            .navigationBarItems(
-                leading: Button("Cancel") {
-                    bluetoothManager.stopScanning()
-                    presentationMode.wrappedValue.dismiss()
-                },
-                trailing: Button(isScanning ? "Stop" : "Scan") {
-                    if isScanning {
-                        stopScanning()
-                    } else {
-                        startScanning()
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Cancel") {
+                        bluetoothManager.stopScanning()
+                        presentationMode.wrappedValue.dismiss()
                     }
                 }
-            )
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button(isScanning ? "Stop" : "Scan") {
+                        if isScanning {
+                            stopScanning()
+                        } else {
+                            startScanning()
+                        }
+                    }
+                }
+            }
         }
         .onAppear {
             startScanning()
         }
         .onDisappear {
             bluetoothManager.stopScanning()
+        }
+    }
+    
+    private var emptyStateView: some View {
+        VStack(spacing: 20) {
+            Image(systemName: "bluetooth")
+                .font(.system(size: 60))
+                .foregroundColor(.gray)
+            
+            Text("No devices found")
+                .font(.headline)
+                .foregroundColor(.gray)
+            
+            Text("Make sure your glove device is in pairing mode and try scanning again.")
+                .font(.body)
+                .foregroundColor(.secondary)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal)
+            
+            Button("Start Scanning") {
+                startScanning()
+            }
+            .buttonStyle(.borderedProminent)
+        }
+    }
+    
+    private var deviceListContent: some View {
+        List {
+            if isScanning {
+                HStack {
+                    ProgressView()
+                        .scaleEffect(0.8)
+                    Text("Scanning for devices...")
+                        .foregroundColor(.secondary)
+                }
+                .padding(.vertical, 8)
+            }
+            
+            ForEach(bluetoothManager.discoveredDevices, id: \.identifier) { device in
+                DeviceRow(device: device) {
+                    bluetoothManager.connect(to: device)
+                    presentationMode.wrappedValue.dismiss()
+                }
+            }
+        }
+        .refreshable {
+            startScanning()
         }
     }
     

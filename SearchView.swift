@@ -7,6 +7,7 @@
 
 import SwiftUI
 import MapKit
+import Combine
 
 struct SearchView: View {
     @ObservedObject var coordinator: AppCoordinator
@@ -15,8 +16,7 @@ struct SearchView: View {
     @Binding var isSearching: Bool
     @Environment(\.presentationMode) var presentationMode
     
-    @State private var searchCompleter = MKLocalSearchCompleter()
-    @State private var searchCompletions: [MKLocalSearchCompletion] = []
+    @StateObject private var searchCompleter = SearchCompleterManager()
     
     var body: some View {
         NavigationView {
@@ -32,27 +32,41 @@ struct SearchView: View {
                 } else if !searchResults.isEmpty {
                     // Search Results
                     List(searchResults, id: \.self) { item in
-                        SearchResultRow(item: item) {
+                        SearchResultRow(
+                            item: item,
+                            userLocation: coordinator.navigationManager.currentLocation
+                        ) {
                             selectDestination(item)
                         }
                     }
-                } else if !searchCompletions.isEmpty {
-                    // Search Completions
-                    List(searchCompletions, id: \.self) { completion in
+                } else if !searchCompleter.completions.isEmpty {
+                    // Auto-complete suggestions (like Apple Maps)
+                    List(searchCompleter.completions, id: \.self) { completion in
                         SearchCompletionRow(completion: completion) {
-                            searchText = completion.title
+                            searchText = "\(completion.title) \(completion.subtitle)".trimmingCharacters(in: .whitespaces)
                             performSearch()
                         }
                     }
-                } else {
-                    // Empty state
-                    VStack {
+                } else if searchText.isEmpty {
+                    // Recent searches / nearby suggestions
+                    VStack(spacing: 20) {
                         Image(systemName: "magnifyingglass")
                             .font(.system(size: 50))
                             .foregroundColor(.gray)
                         Text("Start typing to search for destinations")
                             .foregroundColor(.gray)
                             .multilineTextAlignment(.center)
+                    }
+                    .padding()
+                    Spacer()
+                } else {
+                    // No results
+                    VStack(spacing: 20) {
+                        Image(systemName: "location.slash")
+                            .font(.system(size: 50))
+                            .foregroundColor(.gray)
+                        Text("No results found")
+                            .foregroundColor(.gray)
                     }
                     .padding()
                     Spacer()
@@ -67,29 +81,20 @@ struct SearchView: View {
             )
         }
         .onAppear {
-            setupSearchCompleter()
+            setupSearch()
         }
         .onChange(of: searchText) { newValue in
-            searchCompleter.queryFragment = newValue
+            searchCompleter.updateQuery(newValue)
             if newValue.isEmpty {
                 searchResults = []
-                searchCompletions = []
             }
         }
     }
     
-    private func setupSearchCompleter() {
-        searchCompleter.delegate = SearchCompleterDelegate { completions in
-            self.searchCompletions = completions
-        }
-        
-        // Set search region based on current location
+    private func setupSearch() {
+        // Configure search completer with user's location
         if let location = coordinator.navigationManager.currentLocation {
-            searchCompleter.region = MKCoordinateRegion(
-                center: location.coordinate,
-                latitudinalMeters: 10000,
-                longitudinalMeters: 10000
-            )
+            searchCompleter.setUserLocation(location)
         }
     }
     
@@ -97,7 +102,6 @@ struct SearchView: View {
         guard !searchText.isEmpty else { return }
         
         isSearching = true
-        searchCompletions = []
         
         let request = MKLocalSearch.Request()
         request.naturalLanguageQuery = searchText
@@ -169,22 +173,50 @@ struct SearchBar: UIViewRepresentable {
 
 struct SearchResultRow: View {
     let item: MKMapItem
+    let userLocation: CLLocation?
     let onTap: () -> Void
+    
+    private var distance: String {
+        guard let userLocation = userLocation else { return "" }
+        let itemLocation = CLLocation(
+            latitude: item.placemark.coordinate.latitude,
+            longitude: item.placemark.coordinate.longitude
+        )
+        let distance = userLocation.distance(from: itemLocation)
+        let formatter = MKDistanceFormatter()
+        formatter.unitStyle = .abbreviated
+        return formatter.string(fromDistance: distance)
+    }
     
     var body: some View {
         Button(action: onTap) {
             HStack {
+                // Location pin icon
+                Image(systemName: "mappin.circle.fill")
+                    .font(.title2)
+                    .foregroundColor(.red)
+                
                 VStack(alignment: .leading, spacing: 4) {
                     Text(item.name ?? "Unknown Location")
                         .font(.headline)
                         .foregroundColor(.primary)
                         .multilineTextAlignment(.leading)
                     
-                    if let address = item.placemark.title {
-                        Text(address)
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                            .multilineTextAlignment(.leading)
+                    HStack {
+                        if let address = item.placemark.title {
+                            Text(address)
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                                .lineLimit(1)
+                        }
+                        
+                        if !distance.isEmpty {
+                            Spacer()
+                            Text(distance)
+                                .font(.caption)
+                                .foregroundColor(.blue)
+                                .fontWeight(.medium)
+                        }
                     }
                 }
                 
@@ -206,38 +238,89 @@ struct SearchCompletionRow: View {
     var body: some View {
         Button(action: onTap) {
             HStack {
-                Image(systemName: "magnifyingglass")
+                // Search icon or location type icon
+                Image(systemName: iconForCompletion(completion))
+                    .font(.title2)
                     .foregroundColor(.gray)
+                    .frame(width: 25)
                 
                 VStack(alignment: .leading, spacing: 2) {
                     Text(completion.title)
                         .font(.body)
                         .foregroundColor(.primary)
+                        .lineLimit(1)
                     
                     if !completion.subtitle.isEmpty {
                         Text(completion.subtitle)
                             .font(.caption)
                             .foregroundColor(.secondary)
+                            .lineLimit(1)
                     }
                 }
                 
                 Spacer()
+                
+                // Arrow to fill in search
+                Image(systemName: "arrow.up.left")
+                    .font(.caption)
+                    .foregroundColor(.gray)
             }
-            .padding(.vertical, 4)
+            .padding(.vertical, 8)
         }
         .buttonStyle(PlainButtonStyle())
     }
+    
+    private func iconForCompletion(_ completion: MKLocalSearchCompletion) -> String {
+        // Return appropriate icon based on completion type
+        let title = completion.title.lowercased()
+        
+        if title.contains("restaurant") || title.contains("food") {
+            return "fork.knife"
+        } else if title.contains("gas") || title.contains("fuel") {
+            return "fuelpump"
+        } else if title.contains("hotel") || title.contains("motel") {
+            return "bed.double"
+        } else if title.contains("hospital") {
+            return "cross"
+        } else if title.contains("store") || title.contains("shop") {
+            return "bag"
+        } else {
+            return "magnifyingglass"
+        }
+    }
 }
 
-class SearchCompleterDelegate: NSObject, MKLocalSearchCompleterDelegate {
-    let onUpdate: ([MKLocalSearchCompletion]) -> Void
+// MARK: - Search Completer Manager
+class SearchCompleterManager: NSObject, ObservableObject {
+    @Published var completions: [MKLocalSearchCompletion] = []
     
-    init(onUpdate: @escaping ([MKLocalSearchCompletion]) -> Void) {
-        self.onUpdate = onUpdate
+    private let completer = MKLocalSearchCompleter()
+    
+    override init() {
+        super.init()
+        completer.delegate = self
+        completer.resultTypes = .address
     }
     
+    func updateQuery(_ query: String) {
+        completer.queryFragment = query
+    }
+    
+    func setUserLocation(_ location: CLLocation) {
+        let region = MKCoordinateRegion(
+            center: location.coordinate,
+            latitudinalMeters: 50000,
+            longitudinalMeters: 50000
+        )
+        completer.region = region
+    }
+}
+
+extension SearchCompleterManager: MKLocalSearchCompleterDelegate {
     func completerDidUpdateResults(_ completer: MKLocalSearchCompleter) {
-        onUpdate(completer.results)
+        DispatchQueue.main.async {
+            self.completions = completer.results
+        }
     }
     
     func completer(_ completer: MKLocalSearchCompleter, didFailWithError error: Error) {

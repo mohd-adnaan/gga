@@ -6,13 +6,57 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		5F17200B2EB2BA94005F334E /* SideMenuView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F17200A2EB2BA8C005F334E /* SideMenuView.swift */; };
+		5F8B6BAB2EAF1DD6009C3FFC /* ModelsHapticCommand.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F8B6BAA2EAF1DD5009C3FFC /* ModelsHapticCommand.swift */; };
+		5F8B6BAD2EAF1DDA009C3FFC /* HapticCommand.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F8B6BAC2EAF1DDA009C3FFC /* HapticCommand.swift */; };
+		5F8B6BAF2EAF1DE4009C3FFC /* AppSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F8B6BAE2EAF1DE4009C3FFC /* AppSettings.swift */; };
+		5F8B6BB12EAF1DF9009C3FFC /* BluetoothManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F8B6BB02EAF1DF9009C3FFC /* BluetoothManager.swift */; };
+		5F8B6BB32EAF1E12009C3FFC /* NavigationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F8B6BB22EAF1E12009C3FFC /* NavigationManager.swift */; };
+		5F8B6BB52EAF1E1B009C3FFC /* AppCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F8B6BB42EAF1E1B009C3FFC /* AppCoordinator.swift */; };
+		5F8B6BB72EAF1E2C009C3FFC /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F8B6BB62EAF1E2C009C3FFC /* HomeView.swift */; };
+		5F8B6BB92EAF1E42009C3FFC /* SearchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F8B6BB82EAF1E42009C3FFC /* SearchView.swift */; };
+		5F8B6BBB2EAF1E5A009C3FFC /* NavigationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F8B6BBA2EAF1E5A009C3FFC /* NavigationView.swift */; };
+		5F8B6BBD2EAF1E73009C3FFC /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F8B6BBC2EAF1E73009C3FFC /* SettingsView.swift */; };
+		5F8B6BBF2EAF1E7C009C3FFC /* EndNavigationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F8B6BBE2EAF1E7C009C3FFC /* EndNavigationView.swift */; };
+		5F8B6BC12EAF1E98009C3FFC /* Info-plist-guide.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F8B6BC02EAF1E98009C3FFC /* Info-plist-guide.swift */; };
+		5F8B6BC32EAF1EB9009C3FFC /* README.md in Resources */ = {isa = PBXBuildFile; fileRef = 5F8B6BC22EAF1EB9009C3FFC /* README.md */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXFileReference section */
+		5F17200A2EB2BA8C005F334E /* SideMenuView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SideMenuView.swift; sourceTree = "<group>"; };
+		5F8B6BAA2EAF1DD5009C3FFC /* ModelsHapticCommand.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelsHapticCommand.swift; sourceTree = "<group>"; };
+		5F8B6BAC2EAF1DDA009C3FFC /* HapticCommand.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HapticCommand.swift; sourceTree = "<group>"; };
+		5F8B6BAE2EAF1DE4009C3FFC /* AppSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSettings.swift; sourceTree = "<group>"; };
+		5F8B6BB02EAF1DF9009C3FFC /* BluetoothManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BluetoothManager.swift; sourceTree = "<group>"; };
+		5F8B6BB22EAF1E12009C3FFC /* NavigationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NavigationManager.swift; sourceTree = "<group>"; };
+		5F8B6BB42EAF1E1B009C3FFC /* AppCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppCoordinator.swift; sourceTree = "<group>"; };
+		5F8B6BB62EAF1E2C009C3FFC /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
+		5F8B6BB82EAF1E42009C3FFC /* SearchView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchView.swift; sourceTree = "<group>"; };
+		5F8B6BBA2EAF1E5A009C3FFC /* NavigationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NavigationView.swift; sourceTree = "<group>"; };
+		5F8B6BBC2EAF1E73009C3FFC /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		5F8B6BBE2EAF1E7C009C3FFC /* EndNavigationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EndNavigationView.swift; sourceTree = "<group>"; };
+		5F8B6BC02EAF1E98009C3FFC /* Info-plist-guide.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Info-plist-guide.swift"; sourceTree = "<group>"; };
+		5F8B6BC22EAF1EB9009C3FFC /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		5FA5E7F32EABFF780056B1B9 /* GloveGuide.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = GloveGuide.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		5F171FFE2EB1A16B005F334E /* Exceptions for "GloveGuide" folder in "GloveGuide" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 5FA5E7F22EABFF780056B1B9 /* GloveGuide */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		5FA5E7F52EABFF780056B1B9 /* GloveGuide */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				5F171FFE2EB1A16B005F334E /* Exceptions for "GloveGuide" folder in "GloveGuide" target */,
+			);
 			path = GloveGuide;
 			sourceTree = "<group>";
 		};
@@ -34,6 +78,20 @@
 			children = (
 				5FA5E7F52EABFF780056B1B9 /* GloveGuide */,
 				5FA5E7F42EABFF780056B1B9 /* Products */,
+				5F8B6BAA2EAF1DD5009C3FFC /* ModelsHapticCommand.swift */,
+				5F17200A2EB2BA8C005F334E /* SideMenuView.swift */,
+				5F8B6BAC2EAF1DDA009C3FFC /* HapticCommand.swift */,
+				5F8B6BAE2EAF1DE4009C3FFC /* AppSettings.swift */,
+				5F8B6BB02EAF1DF9009C3FFC /* BluetoothManager.swift */,
+				5F8B6BB22EAF1E12009C3FFC /* NavigationManager.swift */,
+				5F8B6BB42EAF1E1B009C3FFC /* AppCoordinator.swift */,
+				5F8B6BB62EAF1E2C009C3FFC /* HomeView.swift */,
+				5F8B6BB82EAF1E42009C3FFC /* SearchView.swift */,
+				5F8B6BBA2EAF1E5A009C3FFC /* NavigationView.swift */,
+				5F8B6BBC2EAF1E73009C3FFC /* SettingsView.swift */,
+				5F8B6BBE2EAF1E7C009C3FFC /* EndNavigationView.swift */,
+				5F8B6BC02EAF1E98009C3FFC /* Info-plist-guide.swift */,
+				5F8B6BC22EAF1EB9009C3FFC /* README.md */,
 			);
 			sourceTree = "<group>";
 		};
@@ -109,6 +167,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				5F8B6BC32EAF1EB9009C3FFC /* README.md in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -119,6 +178,19 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				5F8B6BB92EAF1E42009C3FFC /* SearchView.swift in Sources */,
+				5F8B6BB72EAF1E2C009C3FFC /* HomeView.swift in Sources */,
+				5F8B6BBB2EAF1E5A009C3FFC /* NavigationView.swift in Sources */,
+				5F8B6BAB2EAF1DD6009C3FFC /* ModelsHapticCommand.swift in Sources */,
+				5F8B6BB32EAF1E12009C3FFC /* NavigationManager.swift in Sources */,
+				5F8B6BAD2EAF1DDA009C3FFC /* HapticCommand.swift in Sources */,
+				5F8B6BB52EAF1E1B009C3FFC /* AppCoordinator.swift in Sources */,
+				5F8B6BAF2EAF1DE4009C3FFC /* AppSettings.swift in Sources */,
+				5F8B6BBD2EAF1E73009C3FFC /* SettingsView.swift in Sources */,
+				5F8B6BB12EAF1DF9009C3FFC /* BluetoothManager.swift in Sources */,
+				5F17200B2EB2BA94005F334E /* SideMenuView.swift in Sources */,
+				5F8B6BBF2EAF1E7C009C3FFC /* EndNavigationView.swift in Sources */,
+				5F8B6BC12EAF1E98009C3FFC /* Info-plist-guide.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -256,6 +328,10 @@
 				DEVELOPMENT_TEAM = DCH2DW3ZF5;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = GloveGuide/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "";
+				INFOPLIST_KEY_LSApplicationCategoryType = "";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "GloveGuide needs location access to provide turn-by-turn haptic navigation and show your current position on the map.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -288,6 +364,10 @@
 				DEVELOPMENT_TEAM = DCH2DW3ZF5;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = GloveGuide/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "";
+				INFOPLIST_KEY_LSApplicationCategoryType = "";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "GloveGuide needs location access to provide turn-by-turn haptic navigation and show your current position on the map.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;

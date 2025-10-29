@@ -21,9 +21,15 @@ class NavigationManager: NSObject, ObservableObject {
     @Published var estimatedTimeOfArrival: Date?
     @Published var remainingTime: TimeInterval = 0
     @Published var currentHeading: CLLocationDirection = 0
+    @Published var isLocationPermissionGranted = false
     
     // MARK: - Private Properties
-    private let locationManager = CLLocationManager()
+    private let _locationManager = CLLocationManager()
+    
+    // Public access to location manager for permission checking
+    var locationManager: CLLocationManager {
+        return _locationManager
+    }
     private var routeSteps: [MKRoute.Step] = []
     private var nextTurnLocation: CLLocation?
     private let bluetoothManager: BluetoothManager
@@ -40,11 +46,73 @@ class NavigationManager: NSObject, ObservableObject {
     
     // MARK: - Setup
     private func setupLocationManager() {
-        locationManager.delegate = self
-        locationManager.desiredAccuracy = kCLLocationAccuracyBest
-        locationManager.requestWhenInUseAuthorization()
-        locationManager.startUpdatingLocation()
-        locationManager.startUpdatingHeading()
+        _locationManager.delegate = self
+        _locationManager.desiredAccuracy = kCLLocationAccuracyBest
+        
+        // Check initial authorization status
+        updateLocationPermissionStatus()
+        
+        switch _locationManager.authorizationStatus {
+        case .authorizedWhenInUse, .authorizedAlways:
+            _locationManager.startUpdatingLocation()
+            _locationManager.startUpdatingHeading()
+        case .notDetermined:
+            _locationManager.requestWhenInUseAuthorization()
+        case .denied, .restricted:
+            print("Location access denied or restricted")
+        @unknown default:
+            break
+        }
+    }
+    
+    private func updateLocationPermissionStatus() {
+        DispatchQueue.main.async {
+            let status = self._locationManager.authorizationStatus
+            print("🔍 Current permission status: \(self.statusString(for: status))")
+            
+            // Only consider authorizedWhenInUse and authorizedAlways as valid for continuous location access
+            // Note: "When I Share" is not sufficient for navigation apps
+            let hasProperPermission = status == .authorizedWhenInUse || status == .authorizedAlways
+            
+            self.isLocationPermissionGranted = hasProperPermission
+            
+            print("🔍 Permission granted: \(self.isLocationPermissionGranted)")
+            
+            // If we don't have proper permission, stop any existing location updates
+            if !hasProperPermission {
+                self._locationManager.stopUpdatingLocation()
+                self._locationManager.stopUpdatingHeading()
+            }
+        }
+    }
+    
+    private func statusString(for status: CLAuthorizationStatus) -> String {
+        switch status {
+        case .notDetermined: return "Not Determined"
+        case .restricted: return "Restricted"
+        case .denied: return "Denied"
+        case .authorizedAlways: return "Authorized Always"
+        case .authorizedWhenInUse: return "Authorized When In Use"
+        @unknown default: return "Unknown"
+        }
+    }
+    
+    func requestLocationPermission() {
+        print("🔍 Requesting location permission, current status: \(statusString(for: _locationManager.authorizationStatus))")
+        DispatchQueue.main.async {
+            self._locationManager.requestWhenInUseAuthorization()
+        }
+    }
+    
+    func checkCurrentPermissionStatus() {
+        print("🔄 Checking current permission status")
+        updateLocationPermissionStatus()
+        
+        // If we have permission, try to start location updates
+        if isLocationPermissionGranted {
+            _locationManager.startUpdatingLocation()
+            _locationManager.startUpdatingHeading()
+        }
     }
     
     // MARK: - Public Methods
@@ -66,6 +134,8 @@ class NavigationManager: NSObject, ObservableObject {
             request.transportType = .walking
         case .cycling:
             request.transportType = .walking // Use walking for cycling as it gives better paths
+        case .driving:
+            request.transportType = .automobile
         }
         
         let directions = MKDirections(request: request)
@@ -92,8 +162,8 @@ class NavigationManager: NSObject, ObservableObject {
     func startNavigation() {
         guard currentRoute != nil else { return }
         navigationState = .navigating
-        locationManager.startUpdatingLocation()
-        locationManager.startUpdatingHeading()
+        _locationManager.startUpdatingLocation()
+        _locationManager.startUpdatingHeading()
     }
     
     func stopNavigation() {
@@ -102,8 +172,8 @@ class NavigationManager: NSObject, ObservableObject {
         routeSteps = []
         currentStepIndex = 0
         bluetoothManager.sendHapticCommand(.stop)
-        locationManager.stopUpdatingLocation()
-        locationManager.stopUpdatingHeading()
+        _locationManager.stopUpdatingLocation()
+        _locationManager.stopUpdatingHeading()
     }
     
     // MARK: - Private Methods
@@ -190,15 +260,22 @@ class NavigationManager: NSObject, ObservableObject {
 extension NavigationManager: CLLocationManagerDelegate {
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
         guard let location = locations.last else { return }
-        currentLocation = location
         
-        if navigationState == .navigating {
-            updateNextTurn(from: location)
+        print("📍 Location updated: \(location.coordinate.latitude), \(location.coordinate.longitude)")
+        
+        DispatchQueue.main.async {
+            self.currentLocation = location
+            
+            if self.navigationState == .navigating {
+                self.updateNextTurn(from: location)
+            }
         }
     }
     
     func locationManager(_ manager: CLLocationManager, didUpdateHeading newHeading: CLHeading) {
-        currentHeading = newHeading.trueHeading
+        DispatchQueue.main.async {
+            self.currentHeading = newHeading.trueHeading
+        }
     }
     
     func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
@@ -206,15 +283,35 @@ extension NavigationManager: CLLocationManagerDelegate {
     }
     
     func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
-        switch manager.authorizationStatus {
-        case .authorizedWhenInUse, .authorizedAlways:
-            locationManager.startUpdatingLocation()
-        case .denied, .restricted:
-            print("Location access denied")
-        case .notDetermined:
-            locationManager.requestWhenInUseAuthorization()
-        @unknown default:
-            break
+        print("🔍 Location authorization changed to: \(statusString(for: manager.authorizationStatus))")
+        
+        DispatchQueue.main.async {
+            switch manager.authorizationStatus {
+            case .authorizedWhenInUse, .authorizedAlways:
+                print("✅ Location permission granted, starting updates")
+                manager.startUpdatingLocation()
+                manager.startUpdatingHeading()
+                self.isLocationPermissionGranted = true
+                
+                // Get immediate location if available
+                if let location = manager.location {
+                    self.currentLocation = location
+                }
+                
+            case .denied, .restricted:
+                print("❌ Location access denied or restricted")
+                manager.stopUpdatingLocation()
+                manager.stopUpdatingHeading()
+                self.isLocationPermissionGranted = false
+                
+            case .notDetermined:
+                print("❓ Location permission not determined")
+                self.isLocationPermissionGranted = false
+                
+            @unknown default:
+                print("❓ Unknown location authorization status")
+                self.isLocationPermissionGranted = false
+            }
         }
     }
 }
