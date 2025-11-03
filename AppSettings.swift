@@ -79,7 +79,6 @@ enum LeadTime: Int, CaseIterable {
 enum TransportMode: String, CaseIterable {
     case walking = "walking"
     case cycling = "cycling"
-    case driving = "driving"
     
     var displayName: String {
         switch self {
@@ -87,8 +86,6 @@ enum TransportMode: String, CaseIterable {
             return "Walking"
         case .cycling:
             return "Cycling"
-        case .driving:
-            return "Driving"
         }
     }
     
@@ -98,8 +95,6 @@ enum TransportMode: String, CaseIterable {
             return "figure.walk"
         case .cycling:
             return "bicycle"
-        case .driving:
-            return "car"
         }
     }
 }

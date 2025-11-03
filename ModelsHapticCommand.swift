@@ -1,4 +1,4 @@
-//
+ //
 //  HapticCommand.swift
 //  GloveGuide
 //

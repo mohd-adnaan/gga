@@ -128,14 +128,13 @@ class NavigationManager: NSObject, ObservableObject {
         request.source = MKMapItem(placemark: MKPlacemark(coordinate: currentLocation.coordinate))
         request.destination = destination
         
-        // Set transport type based on settings
+        // Apple Maps only supports walking and automobile
+        // For cycling, we use walking routes but adjust the time estimates
         switch settings.transportMode {
         case .walking:
             request.transportType = .walking
         case .cycling:
-            request.transportType = .walking // Use walking for cycling as it gives better paths
-        case .driving:
-            request.transportType = .automobile
+            request.transportType = .walking // Use walking routes for cycling
         }
         
         let directions = MKDirections(request: request)
@@ -147,8 +146,28 @@ class NavigationManager: NSObject, ObservableObject {
                     self.currentRoute = route
                     self.routeSteps = route.steps
                     self.currentStepIndex = 0
-                    self.calculateNavigationInfo()
+                    
+                    // Adjust route info for cycling
+                    if settings.transportMode == .cycling {
+                        // Cycling is typically 3-4x faster than walking
+                        // Average walking speed: 1.4 m/s (5 km/h)
+                        // Average cycling speed: 5.5 m/s (20 km/h)
+                        let cyclingSpeedMultiplier: Double = 0.35 // Cycling takes ~35% of walking time
+                        
+                        // Override the expected travel time
+                        self.remainingTime = route.expectedTravelTime * cyclingSpeedMultiplier
+                        self.estimatedTimeOfArrival = Date().addingTimeInterval(self.remainingTime)
+                        self.remainingDistance = route.distance
+                    } else {
+                        self.calculateNavigationInfo()
+                    }
+                    
                     self.navigationState = .navigating
+                    
+                    // Log for debugging
+                    print("✅ Route calculated for \(settings.transportMode.displayName)")
+                    print("📍 Distance: \(route.distance) meters")
+                    print("⏱️ Expected time: \(self.remainingTime) seconds (\(self.remainingTime / 60) minutes)")
                 }
             }
         } catch {
@@ -181,9 +200,17 @@ class NavigationManager: NSObject, ObservableObject {
         guard let route = currentRoute,
               let currentLocation = currentLocation else { return }
         
-        // Calculate remaining distance and time
+        // Calculate remaining distance
         remainingDistance = route.distance
-        remainingTime = route.expectedTravelTime
+        
+        // Calculate remaining time based on transport mode
+        if settings.transportMode == .cycling {
+            // Cycling is approximately 3-4x faster than walking
+            let cyclingSpeedMultiplier: Double = 0.35
+            remainingTime = route.expectedTravelTime * cyclingSpeedMultiplier
+        } else {
+            remainingTime = route.expectedTravelTime
+        }
         
         // Calculate ETA
         estimatedTimeOfArrival = Date().addingTimeInterval(remainingTime)

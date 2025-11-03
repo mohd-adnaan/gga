@@ -202,6 +202,7 @@ struct NavigationMapView: UIViewRepresentable {
 struct NavigationInfoPanel: View {
     @ObservedObject var coordinator: AppCoordinator
     @State private var hasStartedNavigation = false
+    @State private var isRecalculating = false
     
     private var navigationManager: NavigationManager {
         coordinator.navigationManager
@@ -211,140 +212,212 @@ struct NavigationInfoPanel: View {
         VStack(spacing: 20) {
             if !hasStartedNavigation {
                 // BEFORE STARTING: Show transport mode selector and GO button
-                VStack(spacing: 16) {
-                    // Transport Mode Selector
-                    VStack(alignment: .leading, spacing: 12) {
-                        Text("Select Your Mode")
-                            .font(.headline)
-                            .foregroundColor(.primary)
-                        
-                        HStack(spacing: 12) {
-                            // Walking Mode
-                            TransportModeButton(
-                                icon: "figure.walk",
-                                title: "Walking",
-                                isSelected: coordinator.settings.transportMode == .walking
-                            ) {
-                                coordinator.settings.transportMode = .walking
-                            }
-                            
-                            // Cycling Mode
-                            TransportModeButton(
-                                icon: "bicycle",
-                                title: "Cycling",
-                                isSelected: coordinator.settings.transportMode == .cycling
-                            ) {
-                                coordinator.settings.transportMode = .cycling
-                            }
-                        }
-                    }
-                    
-                    // Connection Status
-                    HStack(spacing: 6) {
-                        Image(systemName: coordinator.bluetoothManager.isConnected ? "bluetooth" : "bluetooth.slash")
-                            .foregroundColor(coordinator.bluetoothManager.isConnected ? .blue : .orange)
-                        Text(coordinator.bluetoothManager.isConnected ? "Glove Connected" : "Glove Disconnected")
-                            .font(.caption)
-                            .foregroundColor(coordinator.bluetoothManager.isConnected ? .blue : .orange)
-                    }
-                    
-                    // GO Button
-                    Button(action: {
-                        withAnimation {
-                            hasStartedNavigation = true
-                            coordinator.navigationManager.startNavigation()
-                        }
-                    }) {
-                        HStack {
-                            Image(systemName: "play.fill")
-                            Text("START NAVIGATION")
-                                .fontWeight(.bold)
-                        }
-                        .font(.title3)
-                        .foregroundColor(.white)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 18)
-                        .background(
-                            LinearGradient(
-                                gradient: Gradient(colors: [Color.green, Color.green.opacity(0.8)]),
-                                startPoint: .leading,
-                                endPoint: .trailing
-                            )
-                        )
-                        .cornerRadius(16)
-                        .shadow(color: .green.opacity(0.3), radius: 8, x: 0, y: 4)
-                    }
-                }
-                .padding(20)
-                
+                preNavigationView
             } else {
                 // AFTER STARTING: Show navigation stats and stop button
-                VStack(spacing: 16) {
-                    // Navigation Stats in Cards
-                    HStack(spacing: 12) {
-                        // ETA Card
-                        NavigationStatCard(
-                            icon: "clock.fill",
-                            label: "ETA",
-                            value: formatETA(navigationManager.estimatedTimeOfArrival),
-                            color: .blue
-                        )
-                        
-                        // Time Left Card
-                        NavigationStatCard(
-                            icon: "hourglass",
-                            label: "Time Left",
-                            value: formatDuration(navigationManager.remainingTime),
-                            color: .orange
-                        )
-                        
-                        // Distance Card
-                        NavigationStatCard(
-                            icon: "location.fill",
-                            label: "Distance",
-                            value: formatDistance(navigationManager.remainingDistance),
-                            color: .green
-                        )
-                    }
-                    
-                    // Connection Status
-                    HStack(spacing: 6) {
-                        Image(systemName: coordinator.bluetoothManager.isConnected ? "bluetooth" : "bluetooth.slash")
-                            .foregroundColor(coordinator.bluetoothManager.isConnected ? .blue : .orange)
-                        Text(coordinator.bluetoothManager.isConnected ? "Glove Connected" : "Glove Disconnected")
-                            .font(.caption)
-                            .foregroundColor(coordinator.bluetoothManager.isConnected ? .blue : .orange)
-                    }
-                    
-                    // Stop Navigation Button
-                    Button(action: {
-                        coordinator.showingEndNavigation = true
-                    }) {
-                        HStack {
-                            Image(systemName: "stop.fill")
-                            Text("STOP NAVIGATION")
-                                .fontWeight(.bold)
-                        }
-                        .font(.headline)
-                        .foregroundColor(.white)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 16)
-                        .background(
-                            LinearGradient(
-                                gradient: Gradient(colors: [Color.red, Color.red.opacity(0.8)]),
-                                startPoint: .leading,
-                                endPoint: .trailing
-                            )
-                        )
-                        .cornerRadius(16)
-                        .shadow(color: .red.opacity(0.3), radius: 8, x: 0, y: 4)
-                    }
-                }
-                .padding(20)
+                activeNavigationView
             }
         }
     }
     
+    // MARK: - Pre-Navigation View
+    private var preNavigationView: some View {
+        VStack(spacing: 16) {
+            // Transport Mode Selector
+            VStack(alignment: .leading, spacing: 12) {
+                Text("Select Your Mode")
+                    .font(.headline)
+                    .foregroundColor(.primary)
+                
+                HStack(spacing: 12) {
+                    // Walking Mode
+                    TransportModeButton(
+                        icon: "figure.walk",
+                        title: "Walking",
+                        isSelected: coordinator.settings.transportMode == .walking
+                    ) {
+                        updateTransportMode(.walking)
+                    }
+                    
+                    // Cycling Mode
+                    TransportModeButton(
+                        icon: "bicycle",
+                        title: "Cycling",
+                        isSelected: coordinator.settings.transportMode == .cycling
+                    ) {
+                        updateTransportMode(.cycling)
+                    }
+                }
+            }
+            
+            // Connection Status
+            connectionStatusBadge
+            
+            // Recalculating indicator or GO button
+            if isRecalculating {
+                ProgressView("Calculating route...")
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 18)
+            } else {
+                // GO Button
+                Button(action: startNavigation) {
+                    HStack {
+                        Image(systemName: "play.fill")
+                        Text("START NAVIGATION")
+                            .fontWeight(.bold)
+                    }
+                    .font(.title3)
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 18)
+                    .background(
+                        LinearGradient(
+                            gradient: Gradient(colors: [Color.green, Color.green.opacity(0.8)]),
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                    )
+                    .cornerRadius(16)
+                    .shadow(color: .green.opacity(0.3), radius: 8, x: 0, y: 4)
+                }
+            }
+        }
+        .padding(20)
+    }
+    
+    // MARK: - Active Navigation View
+    private var activeNavigationView: some View {
+        VStack(spacing: 16) {
+            // Transport mode indicator (non-interactive)
+            HStack(spacing: 8) {
+                Image(systemName: coordinator.settings.transportMode == .walking ? "figure.walk" : "bicycle")
+                    .font(.title3)
+                Text(coordinator.settings.transportMode.displayName)
+                    .font(.subheadline)
+                    .fontWeight(.medium)
+            }
+            .foregroundColor(.blue)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 8)
+            .background(
+                Capsule()
+                    .fill(Color.blue.opacity(0.1))
+            )
+            
+            // Navigation Stats in Cards
+            HStack(spacing: 12) {
+                // ETA Card
+                NavigationStatCard(
+                    icon: "clock.fill",
+                    label: "ETA",
+                    value: formatETA(navigationManager.estimatedTimeOfArrival),
+                    color: .blue
+                )
+                
+                // Time Left Card
+                NavigationStatCard(
+                    icon: "hourglass",
+                    label: "Time Left",
+                    value: formatDuration(navigationManager.remainingTime),
+                    color: .orange
+                )
+                
+                // Distance Card
+                NavigationStatCard(
+                    icon: "location.fill",
+                    label: "Distance",
+                    value: formatDistance(navigationManager.remainingDistance),
+                    color: .green
+                )
+            }
+            
+            // Connection Status
+            connectionStatusBadge
+            
+            // Stop Navigation Button
+            Button(action: {
+                coordinator.showingEndNavigation = true
+            }) {
+                HStack {
+                    Image(systemName: "stop.fill")
+                    Text("STOP NAVIGATION")
+                        .fontWeight(.bold)
+                }
+                .font(.headline)
+                .foregroundColor(.white)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 16)
+                .background(
+                    LinearGradient(
+                        gradient: Gradient(colors: [Color.red, Color.red.opacity(0.8)]),
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    )
+                )
+                .cornerRadius(16)
+                .shadow(color: .red.opacity(0.3), radius: 8, x: 0, y: 4)
+            }
+        }
+        .padding(20)
+    }
+    
+    // MARK: - Connection Status Badge
+    private var connectionStatusBadge: some View {
+        HStack(spacing: 6) {
+            Image(systemName: coordinator.bluetoothManager.isConnected ? "bluetooth" : "bluetooth.slash")
+                .foregroundColor(coordinator.bluetoothManager.isConnected ? .blue : .orange)
+            Text(coordinator.bluetoothManager.isConnected ? "Glove Connected" : "Glove Disconnected")
+                .font(.caption)
+                .foregroundColor(coordinator.bluetoothManager.isConnected ? .blue : .orange)
+        }
+    }
+    
+    // MARK: - Actions
+    private func updateTransportMode(_ mode: TransportMode) {
+        guard coordinator.settings.transportMode != mode else { return }
+        
+        // Update the transport mode
+        coordinator.settings.transportMode = mode
+        
+        // Recalculate route with new transport mode
+        recalculateRoute()
+    }
+    
+    private func recalculateRoute() {
+        guard let destination = coordinator.navigationManager.currentRoute?.steps.last else {
+            return
+        }
+        
+        isRecalculating = true
+        
+        // Get the destination from current route
+        let pointCount = coordinator.navigationManager.currentRoute?.polyline.pointCount ?? 0
+        if pointCount > 0, let points = coordinator.navigationManager.currentRoute?.polyline.points() {
+            let destinationCoordinate = points[pointCount - 1].coordinate
+            let destinationPlacemark = MKPlacemark(coordinate: destinationCoordinate)
+            let destinationMapItem = MKMapItem(placemark: destinationPlacemark)
+            
+            // Recalculate route
+            Task {
+                await coordinator.navigationManager.calculateRoute(to: destinationMapItem)
+                
+                await MainActor.run {
+                    isRecalculating = false
+                }
+            }
+        } else {
+            isRecalculating = false
+        }
+    }
+    
+    private func startNavigation() {
+        withAnimation {
+            hasStartedNavigation = true
+            coordinator.navigationManager.startNavigation()
+        }
+    }
+    
+    // MARK: - Formatters
     private func formatETA(_ eta: Date?) -> String {
         guard let eta = eta else { return "--:--" }
         let formatter = DateFormatter()

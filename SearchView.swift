@@ -17,20 +17,24 @@ struct SearchView: View {
     @Environment(\.presentationMode) var presentationMode
     
     @StateObject private var searchCompleter = SearchCompleterManager()
+    @State private var showingCompletions = true // Show completions by default
     
     var body: some View {
         NavigationView {
             VStack(spacing: 0) {
                 // Search Bar
-                SearchBar(text: $searchText, onSearchButtonClicked: performSearch)
-                    .padding()
+                SearchBar(text: $searchText, onSearchButtonClicked: {
+                    performSearch()
+                    showingCompletions = false
+                })
+                .padding()
                 
                 if isSearching {
                     ProgressView("Searching...")
                         .padding()
                     Spacer()
                 } else if !searchResults.isEmpty {
-                    // Search Results
+                    // Search Results (after pressing search button)
                     List(searchResults, id: \.self) { item in
                         SearchResultRow(
                             item: item,
@@ -39,16 +43,17 @@ struct SearchView: View {
                             selectDestination(item)
                         }
                     }
-                } else if !searchCompleter.completions.isEmpty {
-                    // Auto-complete suggestions (like Apple Maps)
+                } else if showingCompletions && !searchCompleter.completions.isEmpty && !searchText.isEmpty {
+                    // Auto-complete suggestions (as you type - like Apple Maps)
                     List(searchCompleter.completions, id: \.self) { completion in
                         SearchCompletionRow(completion: completion) {
-                            searchText = "\(completion.title) \(completion.subtitle)".trimmingCharacters(in: .whitespaces)
-                            performSearch()
+                            // When user taps a completion, search for it
+                            searchText = completion.title
+                            searchForCompletion(completion)
                         }
                     }
                 } else if searchText.isEmpty {
-                    // Recent searches / nearby suggestions
+                    // Empty state
                     VStack(spacing: 20) {
                         Image(systemName: "magnifyingglass")
                             .font(.system(size: 50))
@@ -59,16 +64,21 @@ struct SearchView: View {
                     }
                     .padding()
                     Spacer()
-                } else {
-                    // No results
+                } else if !isSearching && searchCompleter.completions.isEmpty && !searchText.isEmpty {
+                    // No results state
                     VStack(spacing: 20) {
                         Image(systemName: "location.slash")
                             .font(.system(size: 50))
                             .foregroundColor(.gray)
                         Text("No results found")
                             .foregroundColor(.gray)
+                        Text("Try a different search term")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
                     }
                     .padding()
+                    Spacer()
+                } else {
                     Spacer()
                 }
             }
@@ -82,11 +92,21 @@ struct SearchView: View {
         }
         .onAppear {
             setupSearch()
+            showingCompletions = true
         }
         .onChange(of: searchText) { newValue in
+            // Clear search results when user starts typing again
+            if !newValue.isEmpty {
+                searchResults = []
+                showingCompletions = true
+            }
+            
+            // Update completions as user types
             searchCompleter.updateQuery(newValue)
+            
             if newValue.isEmpty {
                 searchResults = []
+                showingCompletions = true
             }
         }
     }
@@ -102,6 +122,7 @@ struct SearchView: View {
         guard !searchText.isEmpty else { return }
         
         isSearching = true
+        showingCompletions = false
         
         let request = MKLocalSearch.Request()
         request.naturalLanguageQuery = searchText
@@ -115,6 +136,25 @@ struct SearchView: View {
         }
         
         let search = MKLocalSearch(request: request)
+        search.start { response, error in
+            DispatchQueue.main.async {
+                isSearching = false
+                if let response = response {
+                    searchResults = response.mapItems
+                } else if let error = error {
+                    coordinator.showError("Search failed: \(error.localizedDescription)")
+                }
+            }
+        }
+    }
+    
+    private func searchForCompletion(_ completion: MKLocalSearchCompletion) {
+        isSearching = true
+        showingCompletions = false
+        
+        let searchRequest = MKLocalSearch.Request(completion: completion)
+        let search = MKLocalSearch(request: searchRequest)
+        
         search.start { response, error in
             DispatchQueue.main.async {
                 isSearching = false
@@ -299,7 +339,8 @@ class SearchCompleterManager: NSObject, ObservableObject {
     override init() {
         super.init()
         completer.delegate = self
-        completer.resultTypes = .address
+        // Show all types of results (addresses, points of interest, queries)
+        completer.resultTypes = [.address, .pointOfInterest, .query]
     }
     
     func updateQuery(_ query: String) {
@@ -325,5 +366,9 @@ extension SearchCompleterManager: MKLocalSearchCompleterDelegate {
     
     func completer(_ completer: MKLocalSearchCompleter, didFailWithError error: Error) {
         print("Search completer error: \(error)")
+        DispatchQueue.main.async {
+            self.completions = []
+        }
     }
 }
+
