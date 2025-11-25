@@ -2,7 +2,7 @@
 //  HomeView.swift
 //  GloveGuide
 //
-//  Created by Mohammad Adnaan on 2025-10-26.
+//  Simplified - RIGHT GLOVE ONLY
 //
 
 import SwiftUI
@@ -120,7 +120,7 @@ struct HomeView: View {
     // MARK: - Bottom Search Bar
     private var bottomSearchBar: some View {
         VStack(spacing: 12) {
-            // Connection Status
+            // Single Glove Connection Status
             connectionStatusBadge
             
             // Search Button
@@ -146,20 +146,28 @@ struct HomeView: View {
     
     private var connectionStatusBadge: some View {
         HStack(spacing: 8) {
-            Image(systemName: coordinator.bluetoothManager.isConnected ? "bluetooth" : "bluetooth.slash")
+            Image(systemName: coordinator.bluetoothManager.isConnected ?
+                "hand.point.right.fill" : "hand.point.right")
                 .font(.caption)
-                .foregroundColor(coordinator.bluetoothManager.isConnected ? .blue : .orange)
+                .foregroundColor(coordinator.bluetoothManager.isConnected ? .green : .gray)
             
-            Text(coordinator.bluetoothManager.isConnected ? "Glove Connected" : "Glove Disconnected")
+            Text(coordinator.bluetoothManager.isConnected ? "Right Glove Connected" : "Glove Disconnected")
                 .font(.caption)
                 .fontWeight(.medium)
-                .foregroundColor(coordinator.bluetoothManager.isConnected ? .blue : .orange)
+                .foregroundColor(coordinator.bluetoothManager.isConnected ? .green : .gray)
+            
+            if coordinator.bluetoothManager.isConnected {
+                Circle()
+                    .fill(Color.green)
+                    .frame(width: 8, height: 8)
+            }
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 8)
         .background(
             Capsule()
-                .fill(coordinator.bluetoothManager.isConnected ? Color.blue.opacity(0.1) : Color.orange.opacity(0.1))
+                .fill(coordinator.bluetoothManager.isConnected ?
+                    Color.green.opacity(0.1) : Color.gray.opacity(0.1))
         )
     }
     
@@ -220,6 +228,7 @@ struct HomeView: View {
             .ignoresSafeArea(.all)
     }
 }
+
 // Dedicated location permission manager
 class LocationPermissionManager: NSObject, ObservableObject, CLLocationManagerDelegate {
     private let locationManager = CLLocationManager()
@@ -268,7 +277,6 @@ class LocationPermissionManager: NSObject, ObservableObject, CLLocationManagerDe
     // MARK: - CLLocationManagerDelegate
     
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
-        print("🔥 LOCATION UPDATED: \(locations.last?.coordinate ?? CLLocationCoordinate2D())")
         if let location = locations.last {
             DispatchQueue.main.async {
                 self.currentLocation = location
@@ -277,7 +285,6 @@ class LocationPermissionManager: NSObject, ObservableObject, CLLocationManagerDe
     }
     
     func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
-        print("🔥 AUTHORIZATION CHANGED: \(manager.authorizationStatus.rawValue)")
         DispatchQueue.main.async {
             switch manager.authorizationStatus {
             case .authorizedWhenInUse, .authorizedAlways:

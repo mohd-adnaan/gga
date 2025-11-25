@@ -2,7 +2,7 @@
 //  SettingsView.swift
 //  GloveGuide
 //
-//  Created by Mohammad Adnaan on 2025-10-26.
+//  Simplified - RIGHT GLOVE ONLY
 //
 
 import SwiftUI
@@ -12,6 +12,7 @@ struct SettingsView: View {
     @ObservedObject var coordinator: AppCoordinator
     @Environment(\.presentationMode) var presentationMode
     @State private var showingDeviceList = false
+    @State private var testActive = false
     
     private var bluetoothManager: BluetoothManager {
         coordinator.bluetoothManager
@@ -20,58 +21,41 @@ struct SettingsView: View {
     var body: some View {
         NavigationView {
             Form {
-                // Haptic Settings Section
-                Section("Haptic Settings") {
-                    // Vibration Intensity
-                    VStack(alignment: .leading, spacing: 8) {
-                        HStack {
-                            Text("Vibration Intensity")
-                            Spacer()
-                            Text("\(Int(coordinator.settings.vibrationIntensity))%")
-                                .foregroundColor(.secondary)
-                        }
-                        
-                        Slider(value: $coordinator.settings.vibrationIntensity, in: 0...100, step: 5)
-                            .accentColor(.blue)
-                    }
-                    
-                    // Lead Time
-                    Picker("Lead Time Before Turn", selection: $coordinator.settings.leadTime) {
-                        ForEach(LeadTime.allCases, id: \.self) { leadTime in
-                            Text(leadTime.displayName).tag(leadTime)
-                        }
-                    }
-                    
-                    // Progressive Intensity
-                    Toggle("Progressive Intensity", isOn: $coordinator.settings.progressiveIntensityEnabled)
-                }
-                
                 // Bluetooth Connection Section
                 Section("Bluetooth Connection") {
                     HStack {
-                        Image(systemName: bluetoothManager.isConnected ? "bluetooth" : "bluetooth.disabled")
-                            .foregroundColor(bluetoothManager.isConnected ? .blue : .gray)
+                        Image(systemName: bluetoothManager.isConnected ? "hand.point.right.fill" : "hand.point.right")
+                            .foregroundColor(bluetoothManager.isConnected ? .green : .gray)
+                            .font(.title2)
                         
-                        VStack(alignment: .leading) {
-                            Text("Device Status")
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Right Glove")
                                 .font(.headline)
                             Text(bluetoothManager.connectionStatus)
                                 .font(.caption)
-                                .foregroundColor(.secondary)
+                                .foregroundColor(bluetoothManager.isConnected ? .green : .secondary)
                         }
                         
                         Spacer()
                         
-                        if bluetoothManager.isConnected {
-                            Button("Disconnect") {
-                                bluetoothManager.disconnect()
-                            }
-                            .foregroundColor(.red)
-                        } else {
-                            Button("Connect") {
-                                showingDeviceList = true
-                            }
+                        Circle()
+                            .fill(bluetoothManager.isConnected ? Color.green : Color.gray)
+                            .frame(width: 12, height: 12)
+                    }
+                    .padding(.vertical, 4)
+                    
+                    // Connection Button
+                    if bluetoothManager.isConnected {
+                        Button("Disconnect") {
+                            bluetoothManager.disconnect()
                         }
+                        .foregroundColor(.red)
+                        .frame(maxWidth: .infinity)
+                    } else {
+                        Button("Scan for Glove") {
+                            showingDeviceList = true
+                        }
+                        .frame(maxWidth: .infinity)
                     }
                     
                     if bluetoothManager.isConnected,
@@ -85,7 +69,103 @@ struct SettingsView: View {
                     }
                 }
                 
-                // Navigation Preferences Section
+                // Manual Test Controls
+                if bluetoothManager.isConnected {
+                    Section(header: Text("Manual Test Controls"),
+                            footer: Text("Press once to start vibration, press again to stop. Perfect for testing before navigation.")) {
+                        
+                        VStack(spacing: 16) {
+                            Button(action: {
+                                if testActive {
+                                    bluetoothManager.testOff()
+                                    testActive = false
+                                } else {
+                                    bluetoothManager.testOn()
+                                    testActive = true
+                                }
+                            }) {
+                                HStack(spacing: 16) {
+                                    Image(systemName: "hand.point.right.fill")
+                                        .font(.system(size: 32))
+                                        .foregroundColor(.white)
+                                    
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Text(testActive ? "STOP GLOVE" : "TEST GLOVE")
+                                            .font(.headline)
+                                            .foregroundColor(.white)
+                                        Text(testActive ? "Tap to stop vibration" : "Tap to vibrate right glove")
+                                            .font(.caption)
+                                            .foregroundColor(.white.opacity(0.8))
+                                    }
+                                    
+                                    Spacer()
+                                    
+                                    if testActive {
+                                        ProgressView()
+                                            .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                                    }
+                                }
+                                .padding(20)
+                                .frame(maxWidth: .infinity)
+                                .background(
+                                    LinearGradient(
+                                        gradient: Gradient(colors: testActive ?
+                                            [Color.orange, Color.orange.opacity(0.8)] :
+                                            [Color.green, Color.green.opacity(0.8)]),
+                                        startPoint: .leading,
+                                        endPoint: .trailing
+                                    )
+                                )
+                                .cornerRadius(12)
+                            }
+                            .buttonStyle(PlainButtonStyle())
+                        }
+                        .padding(.vertical, 8)
+                    }
+                    
+                    // Available Characteristics (for debugging)
+                    if !bluetoothManager.availableCharacteristics.isEmpty {
+                        Section("Device Information") {
+                            ForEach(bluetoothManager.availableCharacteristics, id: \.uuid) { characteristic in
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text(characteristic.uuid.uuidString)
+                                        .font(.caption)
+                                        .fontWeight(.medium)
+                                    
+                                    Text(characteristicProperties(characteristic))
+                                        .font(.caption2)
+                                        .foregroundColor(.secondary)
+                                }
+                                .padding(.vertical, 4)
+                            }
+                        }
+                    }
+                }
+                
+                // Haptic Settings
+                Section("Haptic Settings") {
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack {
+                            Text("Vibration Intensity")
+                            Spacer()
+                            Text("\(Int(coordinator.settings.vibrationIntensity))%")
+                                .foregroundColor(.secondary)
+                        }
+                        
+                        Slider(value: $coordinator.settings.vibrationIntensity, in: 0...100, step: 5)
+                            .accentColor(.blue)
+                    }
+                    
+                    Picker("Lead Time Before Turn", selection: $coordinator.settings.leadTime) {
+                        ForEach(LeadTime.allCases, id: \.self) { leadTime in
+                            Text(leadTime.displayName).tag(leadTime)
+                        }
+                    }
+                    
+                    Toggle("Progressive Intensity", isOn: $coordinator.settings.progressiveIntensityEnabled)
+                }
+                
+                // Navigation Preferences
                 Section("Navigation Preferences") {
                     Picker("Default Transport Mode", selection: $coordinator.settings.transportMode) {
                         ForEach(TransportMode.allCases, id: \.self) { mode in
@@ -113,6 +193,14 @@ struct SettingsView: View {
                         Text("Glove Guide")
                             .foregroundColor(.secondary)
                     }
+                    
+                    HStack {
+                        Text("Mode")
+                        Spacer()
+                        Text("Right Glove Only")
+                            .foregroundColor(.orange)
+                            .font(.caption)
+                    }
                 }
             }
             .navigationTitle("Settings")
@@ -120,13 +208,10 @@ struct SettingsView: View {
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("Done") {
-                        // Sync settings to connected device
-                        if bluetoothManager.isConnected {
-                            bluetoothManager.syncSettings(
-                                intensity: coordinator.settings.vibrationIntensity,
-                                leadTime: coordinator.settings.leadTime,
-                                progressiveEnabled: coordinator.settings.progressiveIntensityEnabled
-                            )
+                        // Stop any active tests
+                        if testActive {
+                            bluetoothManager.testOff()
+                            testActive = false
                         }
                         presentationMode.wrappedValue.dismiss()
                     }
@@ -136,6 +221,16 @@ struct SettingsView: View {
         .sheet(isPresented: $showingDeviceList) {
             DeviceListView(bluetoothManager: bluetoothManager)
         }
+    }
+    
+    private func characteristicProperties(_ characteristic: CBCharacteristic) -> String {
+        var props: [String] = []
+        if characteristic.properties.contains(.read) { props.append("READ") }
+        if characteristic.properties.contains(.write) { props.append("WRITE") }
+        if characteristic.properties.contains(.writeWithoutResponse) { props.append("WRITE_NO_RESP") }
+        if characteristic.properties.contains(.notify) { props.append("NOTIFY") }
+        if characteristic.properties.contains(.indicate) { props.append("INDICATE") }
+        return props.joined(separator: " | ")
     }
 }
 
@@ -147,13 +242,34 @@ struct DeviceListView: View {
     var body: some View {
         NavigationView {
             VStack {
+                // Connection Status Banner
+                if bluetoothManager.isConnected {
+                    VStack(spacing: 8) {
+                        HStack(spacing: 16) {
+                            HStack(spacing: 6) {
+                                Image(systemName: "hand.point.right.fill")
+                                    .foregroundColor(.green)
+                                Text("Right Glove Connected")
+                                    .font(.caption)
+                                    .fontWeight(.semibold)
+                            }
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 6)
+                            .background(Color.green.opacity(0.1))
+                            .cornerRadius(8)
+                        }
+                    }
+                    .padding()
+                    .background(Color(.systemGray6))
+                }
+                
                 if bluetoothManager.discoveredDevices.isEmpty && !isScanning {
                     emptyStateView
                 } else {
                     deviceListContent
                 }
             }
-            .navigationTitle("Available Devices")
+            .navigationTitle("BLE Devices")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
@@ -183,7 +299,7 @@ struct DeviceListView: View {
     
     private var emptyStateView: some View {
         VStack(spacing: 20) {
-            Image(systemName: "bluetooth")
+            Image(systemName: "antenna.radiowaves.left.and.right")
                 .font(.system(size: 60))
                 .foregroundColor(.gray)
             
@@ -191,11 +307,20 @@ struct DeviceListView: View {
                 .font(.headline)
                 .foregroundColor(.gray)
             
-            Text("Make sure your glove device is in pairing mode and try scanning again.")
+            Text("Make sure your ESP32 is powered on and in range. This scanner finds ALL Bluetooth Low Energy devices nearby.")
                 .font(.body)
                 .foregroundColor(.secondary)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal)
+            
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Looking for: GloveGuide_RIGHT")
+                    .font(.caption)
+                    .foregroundColor(.orange)
+            }
+            .padding()
+            .background(Color.orange.opacity(0.1))
+            .cornerRadius(8)
             
             Button("Start Scanning") {
                 startScanning()
@@ -210,16 +335,23 @@ struct DeviceListView: View {
                 HStack {
                     ProgressView()
                         .scaleEffect(0.8)
-                    Text("Scanning for devices...")
+                    Text("Scanning for ALL BLE devices...")
                         .foregroundColor(.secondary)
                 }
                 .padding(.vertical, 8)
             }
             
-            ForEach(bluetoothManager.discoveredDevices, id: \.identifier) { device in
-                DeviceRow(device: device) {
-                    bluetoothManager.connect(to: device)
-                    presentationMode.wrappedValue.dismiss()
+            Section(header: Text("\(bluetoothManager.discoveredDevices.count) device(s) found")) {
+                ForEach(bluetoothManager.discoveredDevices, id: \.identifier) { device in
+                    DeviceRow(
+                        device: device,
+                        isTarget: device.name?.contains("GloveGuide") ?? false
+                    ) {
+                        bluetoothManager.connect(to: device)
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                            presentationMode.wrappedValue.dismiss()
+                        }
+                    }
                 }
             }
         }
@@ -232,8 +364,8 @@ struct DeviceListView: View {
         isScanning = true
         bluetoothManager.startScanning()
         
-        // Stop scanning after 10 seconds
-        DispatchQueue.main.asyncAfter(deadline: .now() + 10) {
+        // Stop scanning after 15 seconds
+        DispatchQueue.main.asyncAfter(deadline: .now() + 15) {
             stopScanning()
         }
     }
@@ -246,19 +378,28 @@ struct DeviceListView: View {
 
 struct DeviceRow: View {
     let device: CBPeripheral
+    let isTarget: Bool
     let onConnect: () -> Void
     
     var body: some View {
         Button(action: onConnect) {
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(device.name ?? "Unknown Device")
-                        .font(.headline)
-                        .foregroundColor(.primary)
+                    HStack {
+                        Text(device.name ?? "Unknown Device")
+                            .font(.headline)
+                            .foregroundColor(.primary)
+                        
+                        if isTarget {
+                            Text("🎯")
+                                .font(.title3)
+                        }
+                    }
                     
                     Text(device.identifier.uuidString)
                         .font(.caption)
                         .foregroundColor(.secondary)
+                        .lineLimit(1)
                 }
                 
                 Spacer()
