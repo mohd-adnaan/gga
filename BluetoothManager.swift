@@ -2,7 +2,7 @@
 //  BluetoothManager.swift
 //  GloveGuide
 //
-//  Simplified - RIGHT GLOVE ONLY
+//  RIGHT GLOVE ONLY - WITH DUAL MOTOR SUPPORT
 //
 
 import Foundation
@@ -32,24 +32,21 @@ class BluetoothManager: NSObject, ObservableObject {
     
     // MARK: - Public Methods
     
-    /// Start scanning for RIGHT glove
     func startScanning() {
         guard centralManager.state == .poweredOn else {
             connectionStatus = "Bluetooth not available"
-            print("❌ Bluetooth not powered on. State: \(centralManager.state.rawValue)")
+            print("❌ Bluetooth not powered on")
             return
         }
         
         discoveredDevices.removeAll()
         connectionStatus = "Scanning..."
         
-        // Scan for ALL BLE devices (no service filter for better discovery)
         centralManager.scanForPeripherals(withServices: nil, options: [
             CBCentralManagerScanOptionAllowDuplicatesKey: false
         ])
         
         print("🔍 Started scanning for ALL BLE devices...")
-        print("🔍 Looking specifically for: GloveGuide_RIGHT")
     }
     
     func stopScanning() {
@@ -76,7 +73,14 @@ class BluetoothManager: NSObject, ObservableObject {
         centralManager.cancelPeripheralConnection(peripheral)
     }
     
-    // MARK: - Send Commands
+    // MARK: - Motor Control Commands
+    
+    /// Set number of motors to use (1 or 2)
+    func setMotorCount(_ count: Int) {
+        let command = count == 2 ? "M2" : "M1"
+        sendCommand(command)
+        print("⚙️  Set motor count to: \(count)")
+    }
     
     /// Send RIGHT turn command
     func sendRightTurn() {
@@ -107,13 +111,11 @@ class BluetoothManager: NSObject, ObservableObject {
         switch command {
         case .right:
             sendRightTurn()
-            // Auto-stop after 2 seconds
             DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) { [weak self] in
                 self?.stopAll()
             }
             
         case .left:
-            // For now, also vibrate on left turns (since we only have right glove)
             sendRightTurn()
             DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) { [weak self] in
                 self?.stopAll()
@@ -147,7 +149,7 @@ class BluetoothManager: NSObject, ObservableObject {
     private func sendCommand(_ command: String) {
         guard let peripheral = connectedPeripheral,
               let characteristic = writeCharacteristic else {
-            print("⚠️ Cannot send command: Not connected or no writable characteristic")
+            print("⚠️ Cannot send command: Not connected")
             return
         }
         
@@ -164,7 +166,7 @@ class BluetoothManager: NSObject, ObservableObject {
             writeType = .withoutResponse
             print("✅ Sent command: '\(command)' (without response)")
         } else {
-            print("❌ Characteristic does not support write operations")
+            print("❌ Characteristic does not support write")
             return
         }
         
@@ -210,11 +212,8 @@ extension BluetoothManager: CBCentralManagerDelegate {
     
     func centralManager(_ central: CBCentralManager, didDiscover peripheral: CBPeripheral, advertisementData: [String : Any], rssi RSSI: NSNumber) {
         let deviceName = peripheral.name ?? "Unknown"
+        print("📡 Discovered: \(deviceName) | RSSI: \(RSSI) dB")
         
-        // Log ALL discovered devices for debugging
-        print("📡 Discovered: \(deviceName) | UUID: \(peripheral.identifier.uuidString) | RSSI: \(RSSI) dB")
-        
-        // Add ALL devices to list (not just GloveGuide ones)
         if !discoveredDevices.contains(where: { $0.identifier == peripheral.identifier }) {
             DispatchQueue.main.async {
                 self.discoveredDevices.append(peripheral)
@@ -288,11 +287,11 @@ extension BluetoothManager: CBPeripheralDelegate {
         }
         
         guard let characteristics = service.characteristics else {
-            print("⚠️ No characteristics found for service: \(service.uuid)")
+            print("⚠️ No characteristics found")
             return
         }
         
-        print("📝 Found \(characteristics.count) characteristic(s) in service \(service.uuid):")
+        print("📝 Found \(characteristics.count) characteristic(s):")
         
         var writableFound = false
         for characteristic in characteristics {
@@ -303,15 +302,13 @@ extension BluetoothManager: CBPeripheralDelegate {
             if properties.contains(.write) { propertyString += "WRITE " }
             if properties.contains(.writeWithoutResponse) { propertyString += "WRITE_NO_RESP " }
             if properties.contains(.notify) { propertyString += "NOTIFY " }
-            if properties.contains(.indicate) { propertyString += "INDICATE " }
             
-            print("   • \(characteristic.uuid) | Properties: \(propertyString)")
+            print("   • \(characteristic.uuid) | \(propertyString)")
             
             DispatchQueue.main.async {
                 self.availableCharacteristics.append(characteristic)
             }
             
-            // Auto-select first writable characteristic
             if !writableFound && (properties.contains(.write) || properties.contains(.writeWithoutResponse)) {
                 writableFound = true
                 DispatchQueue.main.async {
@@ -320,9 +317,7 @@ extension BluetoothManager: CBPeripheralDelegate {
             }
         }
         
-        if !writableFound {
-            print("⚠️ No writable characteristics found in this service")
-        } else {
+        if writableFound {
             print("✅ RIGHT glove ready for commands")
         }
     }
@@ -331,23 +326,11 @@ extension BluetoothManager: CBPeripheralDelegate {
         if let error = error {
             print("❌ Write error: \(error.localizedDescription)")
         } else {
-            print("✅ Write successful to: \(characteristic.uuid)")
-        }
-    }
-    
-    func peripheral(_ peripheral: CBPeripheral, didUpdateValueFor characteristic: CBCharacteristic, error: Error?) {
-        if let error = error {
-            print("❌ Read error: \(error.localizedDescription)")
-            return
-        }
-        
-        if let data = characteristic.value {
-            print("📥 Received data from \(characteristic.uuid): \(data.hexString)")
+            print("✅ Write successful")
         }
     }
 }
 
-// MARK: - Helper Extensions
 extension Data {
     var hexString: String {
         return map { String(format: "%02x", $0) }.joined(separator: " ")

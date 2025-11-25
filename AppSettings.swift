@@ -2,28 +2,22 @@
 //  AppSettings.swift
 //  GloveGuide
 //
-//  Created by Mohammad Adnaan on 2025-10-26.
+//  SIMPLIFIED - No Progressive Intensity
 //
 
 import Foundation
 import Combine
 
 class AppSettings: ObservableObject {
-    @Published var vibrationIntensity: Double {
+    @Published var motorCount: Int {
         didSet {
-            UserDefaults.standard.set(vibrationIntensity, forKey: "vibrationIntensity")
+            UserDefaults.standard.set(motorCount, forKey: "motorCount")
         }
     }
     
     @Published var leadTime: LeadTime {
         didSet {
             UserDefaults.standard.set(leadTime.rawValue, forKey: "leadTime")
-        }
-    }
-    
-    @Published var progressiveIntensityEnabled: Bool {
-        didSet {
-            UserDefaults.standard.set(progressiveIntensityEnabled, forKey: "progressiveIntensityEnabled")
         }
     }
     
@@ -40,9 +34,8 @@ class AppSettings: ObservableObject {
     }
     
     init() {
-        self.vibrationIntensity = UserDefaults.standard.object(forKey: "vibrationIntensity") as? Double ?? 50.0
+        self.motorCount = UserDefaults.standard.object(forKey: "motorCount") as? Int ?? 1
         self.leadTime = LeadTime(rawValue: UserDefaults.standard.integer(forKey: "leadTime")) ?? .tenSeconds
-        self.progressiveIntensityEnabled = UserDefaults.standard.object(forKey: "progressiveIntensityEnabled") as? Bool ?? true
         self.transportMode = TransportMode(rawValue: UserDefaults.standard.string(forKey: "transportMode") ?? "") ?? .walking
         self.lastConnectedDeviceUUID = UserDefaults.standard.string(forKey: "lastConnectedDeviceUUID")
     }
@@ -69,7 +62,7 @@ enum LeadTime: Int, CaseIterable {
         case .immediate:
             return 0
         case .tenSeconds:
-            return 10 // meters, assuming ~1m/s walking speed
+            return 10
         case .twentySeconds:
             return 20
         }

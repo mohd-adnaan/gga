@@ -2,7 +2,7 @@
 //  SettingsView.swift
 //  GloveGuide
 //
-//  Simplified - RIGHT GLOVE ONLY
+//  RIGHT GLOVE - DUAL MOTOR - FIXED UI
 //
 
 import SwiftUI
@@ -72,7 +72,7 @@ struct SettingsView: View {
                 // Manual Test Controls
                 if bluetoothManager.isConnected {
                     Section(header: Text("Manual Test Controls"),
-                            footer: Text("Press once to start vibration, press again to stop. Perfect for testing before navigation.")) {
+                            footer: Text("Press once to start vibration, press again to stop.")) {
                         
                         VStack(spacing: 16) {
                             Button(action: {
@@ -93,7 +93,7 @@ struct SettingsView: View {
                                         Text(testActive ? "STOP GLOVE" : "TEST GLOVE")
                                             .font(.headline)
                                             .foregroundColor(.white)
-                                        Text(testActive ? "Tap to stop vibration" : "Tap to vibrate right glove")
+                                        Text(testActive ? "Tap to stop" : "Tap to vibrate")
                                             .font(.caption)
                                             .foregroundColor(.white.opacity(0.8))
                                     }
@@ -122,47 +122,92 @@ struct SettingsView: View {
                         }
                         .padding(.vertical, 8)
                     }
-                    
-                    // Available Characteristics (for debugging)
-                    if !bluetoothManager.availableCharacteristics.isEmpty {
-                        Section("Device Information") {
-                            ForEach(bluetoothManager.availableCharacteristics, id: \.uuid) { characteristic in
-                                VStack(alignment: .leading, spacing: 4) {
-                                    Text(characteristic.uuid.uuidString)
-                                        .font(.caption)
-                                        .fontWeight(.medium)
-                                    
-                                    Text(characteristicProperties(characteristic))
-                                        .font(.caption2)
-                                        .foregroundColor(.secondary)
-                                }
-                                .padding(.vertical, 4)
-                            }
-                        }
-                    }
                 }
                 
-                // Haptic Settings
-                Section("Haptic Settings") {
-                    VStack(alignment: .leading, spacing: 8) {
-                        HStack {
-                            Text("Vibration Intensity")
-                            Spacer()
-                            Text("\(Int(coordinator.settings.vibrationIntensity))%")
-                                .foregroundColor(.secondary)
-                        }
+                // Haptic Settings - FIXED SEGMENTED CONTROL
+                Section(header: Text("Haptic Settings"),
+                        footer: Text("Use 2 motors for stronger vibration feedback.")) {
+                    
+                    // Motor Count Picker - FIXED
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("Number of Motors")
+                            .font(.headline)
                         
-                        Slider(value: $coordinator.settings.vibrationIntensity, in: 0...100, step: 5)
-                            .accentColor(.blue)
+                        HStack(spacing: 0) {
+                            // 1 Motor Button
+                            Button(action: {
+                                coordinator.settings.motorCount = 1
+                                if bluetoothManager.isConnected {
+                                    bluetoothManager.setMotorCount(1)
+                                }
+                            }) {
+                                HStack {
+                                    Image(systemName: "circle.fill")
+                                        .font(.caption)
+                                    Text("1 Motor")
+                                }
+                                .font(.subheadline)
+                                .fontWeight(.medium)
+                                .foregroundColor(coordinator.settings.motorCount == 1 ? .white : .primary)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 12)
+                                .background(coordinator.settings.motorCount == 1 ? Color.blue : Color(.systemGray5))
+                                .cornerRadius(8, corners: [.topLeft, .bottomLeft])
+                            }
+                            .buttonStyle(PlainButtonStyle())
+                            
+                            // 2 Motors Button
+                            Button(action: {
+                                coordinator.settings.motorCount = 2
+                                if bluetoothManager.isConnected {
+                                    bluetoothManager.setMotorCount(2)
+                                }
+                            }) {
+                                HStack(spacing: 4) {
+                                    Image(systemName: "circle.fill")
+                                        .font(.caption)
+                                    Image(systemName: "circle.fill")
+                                        .font(.caption)
+                                    Text("2 Motors")
+                                }
+                                .font(.subheadline)
+                                .fontWeight(.medium)
+                                .foregroundColor(coordinator.settings.motorCount == 2 ? .white : .primary)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 12)
+                                .background(coordinator.settings.motorCount == 2 ? Color.blue : Color(.systemGray5))
+                                .cornerRadius(8, corners: [.topRight, .bottomRight])
+                            }
+                            .buttonStyle(PlainButtonStyle())
+                        }
                     }
+                    .padding(.vertical, 8)
+                    
+                    // Visual indicator - FIXED
+                    HStack {
+                        Text("Current Setting:")
+                            .foregroundColor(.secondary)
+                            .font(.subheadline)
+                        Spacer()
+                        HStack(spacing: 6) {
+                            ForEach(0..<coordinator.settings.motorCount, id: \.self) { _ in
+                                Circle()
+                                    .fill(Color.green)
+                                    .frame(width: 10, height: 10)
+                            }
+                            Text("\(coordinator.settings.motorCount) motor\(coordinator.settings.motorCount > 1 ? "s" : "") active")
+                                .font(.subheadline)
+                                .foregroundColor(.green)
+                                .fontWeight(.medium)
+                        }
+                    }
+                    .padding(.vertical, 4)
                     
                     Picker("Lead Time Before Turn", selection: $coordinator.settings.leadTime) {
                         ForEach(LeadTime.allCases, id: \.self) { leadTime in
                             Text(leadTime.displayName).tag(leadTime)
                         }
                     }
-                    
-                    Toggle("Progressive Intensity", isOn: $coordinator.settings.progressiveIntensityEnabled)
                 }
                 
                 // Navigation Preferences
@@ -195,10 +240,10 @@ struct SettingsView: View {
                     }
                     
                     HStack {
-                        Text("Mode")
+                        Text("Configuration")
                         Spacer()
-                        Text("Right Glove Only")
-                            .foregroundColor(.orange)
+                        Text("Right Glove (Dual Motors)")
+                            .foregroundColor(.green)
                             .font(.caption)
                     }
                 }
@@ -221,16 +266,33 @@ struct SettingsView: View {
         .sheet(isPresented: $showingDeviceList) {
             DeviceListView(bluetoothManager: bluetoothManager)
         }
+        .onAppear {
+            // Sync motor count when settings open
+            if bluetoothManager.isConnected {
+                bluetoothManager.setMotorCount(coordinator.settings.motorCount)
+            }
+        }
     }
-    
-    private func characteristicProperties(_ characteristic: CBCharacteristic) -> String {
-        var props: [String] = []
-        if characteristic.properties.contains(.read) { props.append("READ") }
-        if characteristic.properties.contains(.write) { props.append("WRITE") }
-        if characteristic.properties.contains(.writeWithoutResponse) { props.append("WRITE_NO_RESP") }
-        if characteristic.properties.contains(.notify) { props.append("NOTIFY") }
-        if characteristic.properties.contains(.indicate) { props.append("INDICATE") }
-        return props.joined(separator: " | ")
+}
+
+// Helper extension for rounded corners on specific sides
+extension View {
+    func cornerRadius(_ radius: CGFloat, corners: UIRectCorner) -> some View {
+        clipShape(RoundedCorner(radius: radius, corners: corners))
+    }
+}
+
+struct RoundedCorner: Shape {
+    var radius: CGFloat = .infinity
+    var corners: UIRectCorner = .allCorners
+
+    func path(in rect: CGRect) -> Path {
+        let path = UIBezierPath(
+            roundedRect: rect,
+            byRoundingCorners: corners,
+            cornerRadii: CGSize(width: radius, height: radius)
+        )
+        return Path(path.cgPath)
     }
 }
 
@@ -307,20 +369,11 @@ struct DeviceListView: View {
                 .font(.headline)
                 .foregroundColor(.gray)
             
-            Text("Make sure your ESP32 is powered on and in range. This scanner finds ALL Bluetooth Low Energy devices nearby.")
+            Text("Make sure your ESP32 is powered on and in range.")
                 .font(.body)
                 .foregroundColor(.secondary)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal)
-            
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Looking for: GloveGuide_RIGHT")
-                    .font(.caption)
-                    .foregroundColor(.orange)
-            }
-            .padding()
-            .background(Color.orange.opacity(0.1))
-            .cornerRadius(8)
             
             Button("Start Scanning") {
                 startScanning()
@@ -335,7 +388,7 @@ struct DeviceListView: View {
                 HStack {
                     ProgressView()
                         .scaleEffect(0.8)
-                    Text("Scanning for ALL BLE devices...")
+                    Text("Scanning for BLE devices...")
                         .foregroundColor(.secondary)
                 }
                 .padding(.vertical, 8)
@@ -355,16 +408,12 @@ struct DeviceListView: View {
                 }
             }
         }
-        .refreshable {
-            startScanning()
-        }
     }
     
     private func startScanning() {
         isScanning = true
         bluetoothManager.startScanning()
         
-        // Stop scanning after 15 seconds
         DispatchQueue.main.asyncAfter(deadline: .now() + 15) {
             stopScanning()
         }
